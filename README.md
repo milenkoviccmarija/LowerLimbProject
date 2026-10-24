@@ -1,36 +1,33 @@
 # Intelligent Prosthetic Knee Project
 
-This project currently uses the usable `AB06/` dataset and the Machines 2023
-paper as the main algorithmic reference:
+## Overview
 
-```text
-Novel Feature Extraction and Locomotion Mode Classification
-Using Intelligent Lower-Limb Prosthesis
-```
+This project explores locomotion mode classification for an intelligent lower-limb prosthesis using the **AB06 dataset** and the following research paper as the main algorithmic reference:
 
-The file `AB001.mat` is present, but it is not directly usable from Python as a
-dataset because it contains a MATLAB `MCOS` opaque `Signal` object, not normal
-tables or arrays. Do not build analysis on it until it is exported from MATLAB
-to plain numeric tables.
+*Novel Feature Extraction and Locomotion Mode Classification Using Intelligent Lower-Limb Prosthesis* (Machines, 2023).
 
-## What To Learn First
+The pipeline covers dataset indexing, MATLAB data export, feature extraction, classifier input generation, and feature-distribution visualization.
 
-Read and run the project in this order.
+## Dataset and Data Availability
 
-### 1. Dataset Index
+The current pipeline uses the usable `AB06/` dataset.
 
-Script:
+The file `AB001.mat` is also present in the project, but it is not currently suitable for direct Python analysis because it contains a MATLAB `MCOS` opaque `Signal` object rather than standard numeric arrays or tables.
 
-```text
-scripts/build_dataset_index.py
-```
+**Important:** `AB001.mat` should not be used for analysis until its contents have been exported from MATLAB into a Python-compatible format.
 
-Purpose:
+## Project Workflow
 
-- walks through the raw `AB06/` folder
-- finds every `.mat` trial file
-- reads `conditions`
-- records which modalities exist for each trial
+The recommended order for exploring and running the project is described below.
+
+### 1. Dataset Indexing
+
+**Script:** `scripts/build_dataset_index.py`
+
+This script:
+- Scans the raw `AB06/` directory for `.mat` trial files.
+- Reads trial conditions.
+- Records the available modalities for each trial.
 
 Run:
 
@@ -38,32 +35,22 @@ Run:
 python3 scripts/build_dataset_index.py
 ```
 
-Output:
+**Output:**
 
 ```text
 data/processed/ab06_trial_index.csv
 ```
 
-Learn here:
+**Key concepts to understand:**
+- Trial naming conventions.
+- The meaning of `activity_folder`, `trial_stem`, and modality paths.
+- The available raw signals: `imu`, `fp`, `conditions`, `gcLeft`, and `gcRight`.
 
-- how trials are named
-- what `activity_folder`, `trial_stem`, and modality paths mean
-- which raw signals exist; the paper pipeline uses `imu`, `fp`, `conditions`, `gcLeft`, and `gcRight`
+### 2. MATLAB Data Export
 
-### 2. MATLAB To Parquet Export
+**Script:** `scripts/export_ab06_modalities.py`
 
-Script:
-
-```text
-scripts/export_ab06_modalities.py
-```
-
-Purpose:
-
-- reads the trial index
-- opens MATLAB table files
-- normalizes columns like `Header -> time_s`
-- writes one Parquet file per trial and modality
+This script reads the dataset index, extracts MATLAB tables, normalizes column names (for example, `Header` to `time_s`), and exports each trial and modality to Parquet format.
 
 Run:
 
@@ -71,30 +58,22 @@ Run:
 python3 scripts/export_ab06_modalities.py --overwrite
 ```
 
-Output:
+**Output:**
 
 ```text
 data/processed/ab06_modalities/
 data/processed/ab06_modalities/export_manifest.csv
 ```
 
-Learn here:
+**Key concepts to understand:**
+- Converting MATLAB tables into Python-readable data.
+- The role of the export manifest as the main input for downstream scripts.
 
-- how raw `.mat` tables become Python-readable tables
-- why the manifest is the central input for later scripts
+### 3. Baseline Machine Learning Dataset
 
-### 3. Simple ML Baseline
+**Script:** `scripts/build_ab06_ml_datasets.py`
 
-Script:
-
-```text
-scripts/build_ab06_ml_datasets.py
-```
-
-Purpose:
-
-- makes simple windowed statistics from IMU and force-plate data
-- creates baseline datasets before the paper-specific feature extraction
+This script generates baseline datasets using window-based statistical features extracted from IMU and force-plate signals.
 
 Run:
 
@@ -102,37 +81,40 @@ Run:
 python3 scripts/build_ab06_ml_datasets.py
 ```
 
-Output:
+**Output:**
 
 ```text
 data/processed/ml_datasets/
 ```
 
-Learn here:
+**Key concepts to understand:**
+- Assigning labels to time windows.
+- Extracting basic features from sensor signals.
+- The difference between a baseline approach and the paper-specific pipeline.
 
-- how labels are attached to time windows
-- how sensor columns become basic features
-- why this is a baseline, not the final Machines-paper method
+### 4. Paper-Specific Input Dataset
 
-### 4. Paper Input Dataset
+**Script:** `scripts/build_ab06_paper_input_dataset.py`
 
-Script:
+This script creates sample-level inputs adapted to the locomotion modes and signal definitions used in the reference paper.
 
-```text
-scripts/build_ab06_paper_input_dataset.py
-```
+The supported modes are:
 
-Purpose:
+- `ST` — Standing
+- `LW` — Level Walking
+- `SA` — Stair Ascent
+- `SD` — Stair Descent
+- `RA` — Ramp Ascent
+- `RD` — Ramp Descent
 
-- builds sample-level paper inputs
-- maps dataset labels into paper modes: `ST`, `LW`, `SA`, `SD`, `RA`, `RD`
-- extracts paper-style signals:
-  - `theta_t`
-  - `dot_theta_t`
-  - `theta_s`
-  - `Gh`, `Gt`
-  - gait phase
-  - first/second stance GRF peaks
+The extracted signals and variables include:
+
+- `theta_t`
+- `dot_theta_t`
+- `theta_s`
+- `Gh` and `Gt`
+- Gait phase
+- First- and second-stance GRF peaks
 
 Run:
 
@@ -140,35 +122,32 @@ Run:
 python3 scripts/build_ab06_paper_input_dataset.py
 ```
 
-Output:
+**Output:**
 
 ```text
 data/processed/paper_input_datasets/paper_input_samples.csv
 data/processed/paper_input_datasets/summary.csv
 ```
 
-Learn here:
+**Key concepts to understand:**
+- Adapting AB06 signals to the reference paper's methodology.
+- The interpretation of thigh and shank angles.
+- The limitations of using force-plate ground reaction force (GRF) as a proxy for heel- and toe-specific insole measurements.
 
-- how AB06 signals are adapted to the Machines paper
-- why `theta_t` and `theta_s` are taken from thigh/shank IMU segment pitch
-- why force-plate GRF is only a proxy for the paper's heel/toe insole GRF
+### 5. Paper-Inspired Feature Extraction
 
-### 5. Paper Feature Tables
+**Script:** `scripts/build_ab06_paper_features.py`
 
-Script:
+This script transforms the paper input samples into four feature groups:
 
-```text
-scripts/build_ab06_paper_features.py
-```
+| Feature group | Description |
+|---|---|
+| `TPDS` | Thigh phase diagram features |
+| `KAT` | Knee angle trajectory features |
+| `CPO` | Center-point offset features |
+| `GRFPV` | Ground reaction force peak-value features |
 
-Purpose:
-
-- converts paper input samples into named feature groups:
-  - `TPDS`
-  - `KAT`
-  - `CPO`
-  - `GRFPV`
-- keeps steady modes separate from standing logic
+Steady locomotion modes are processed separately from standing.
 
 Run:
 
@@ -176,35 +155,28 @@ Run:
 python3 scripts/build_ab06_paper_features.py
 ```
 
-Output:
+**Output:**
 
 ```text
 data/processed/paper_features/paper_features_like_paper.csv
 data/processed/paper_features/paper_steady_features_like_paper.csv
 ```
 
-Learn here:
+**Key concepts to understand:**
+- The meaning of each feature group.
+- The use of gait-phase bins.
+- Why standing (`ST`) requires separate handling from the `TPDS`, `KAT`, and `CPO` features.
 
-- what each final paper feature column means
-- why phase bins are used
-- why `ST` should not be mixed into `TPDS/KAT/CPO`
+### 6. Classifier Input Generation
 
-### 6. Classifier Inputs From Paper Features
+**Script:** `scripts/build_paper_classifier_inputs.py`
 
-Script:
+This script transforms the extracted feature tables into classifier-ready probability inputs using:
 
-```text
-scripts/build_paper_classifier_inputs.py
-```
-
-Purpose:
-
-- turns feature tables into classifier-ready probability inputs
-- fits:
-  - 2D Gaussian models for `TPDS`
-  - 1D Gaussian models for `KAT`
-  - 2D Gaussian models for `CPO`
-  - line/circle geometry for `GRFPV`
+- 2D Gaussian models for `TPDS`.
+- 1D Gaussian models for `KAT`.
+- 2D Gaussian models for `CPO`.
+- Line/circle geometry for `GRFPV`.
 
 Run:
 
@@ -212,29 +184,21 @@ Run:
 python3 scripts/build_paper_classifier_inputs.py
 ```
 
-Output:
+**Output:**
 
 ```text
 data/processed/paper_classifier_inputs/paper_ann_classifier_inputs.csv
 ```
 
-Learn here:
+**Key concepts to understand:**
+- Converting extracted features into probability-based inputs.
+- How these inputs approximate the feature-processing approach described in the reference paper.
 
-- how raw paper features become probabilities
-- why this is closer to the paper classifier than raw feature columns alone
+### 7. Feature Distribution Visualization
 
-### 7. Paper-Style Figures
+**Script:** `scripts/plot_ab06_paper_feature_distributions.py`
 
-Script:
-
-```text
-scripts/plot_ab06_paper_feature_distributions.py
-```
-
-Purpose:
-
-- plots distributions similar to the paper's feature-analysis figures
-- writes Gaussian/geometric parameter summaries
+This script generates feature-distribution plots inspired by the reference paper and saves summaries of the fitted Gaussian and geometric parameters.
 
 Run:
 
@@ -242,18 +206,20 @@ Run:
 python3 scripts/plot_ab06_paper_feature_distributions.py
 ```
 
-Output:
+**Output:**
 
 ```text
 reports/paper_feature_distributions/
 ```
 
-Learn here:
+**Key concepts to understand:**
+- Feature distributions for each locomotion mode.
+- The degree of separation or overlap between modes.
+- The suitability of the extracted features for classification.
 
-- what the feature distributions look like by mode
-- whether modes separate cleanly or overlap
+## Core Scripts
 
-## Scripts That Should Remain
+The following scripts form the main processing pipeline and should be retained:
 
 ```text
 scripts/build_dataset_index.py
@@ -265,11 +231,16 @@ scripts/build_paper_classifier_inputs.py
 scripts/plot_ab06_paper_feature_distributions.py
 ```
 
-## Important Note About AB001.mat
+## Notes and Limitations
 
-`AB001.mat` should not be used as the dataset yet. It needs a MATLAB export step
-first. A useful exported dataset should contain plain numeric tables with columns
-such as:
+- The pipeline is based on the available AB06 data and is inspired by the methodology described in the Machines (2023) paper.
+- Force-plate GRF measurements are not equivalent to separate heel and toe insole measurements.
+- The extracted features and classifier inputs should be validated against the reference paper before claiming an exact reproduction of its methodology.
+- `AB001.mat` requires an additional MATLAB export step before it can be used reliably in the Python pipeline.
+
+## Expected Data Structure
+
+A Python-compatible exported dataset should contain numeric tables with variables such as:
 
 ```text
 time_s
@@ -281,7 +252,7 @@ Gt
 label / mode
 ```
 
-or modality tables equivalent to:
+Alternatively, the exported data may be organized into modality-specific tables corresponding to:
 
 ```text
 conditions
@@ -290,3 +261,5 @@ fp
 gcLeft
 gcRight
 ```
+
+The exported data should preserve the original timestamps, signal units, and locomotion labels so that the processing pipeline can use them consistently.
