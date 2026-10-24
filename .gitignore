@@ -1,0 +1,18 @@
+AB06/
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+data/processed/
+docs/dataset_overview.md
+
+
+# Large datasets and generated outputs
+data/processed/paper_input_datasets/by_mode/D_raw_LW.csv
+data/processed/paper_input_datasets/by_mode/D_raw_ST.csv
+data/processed/paper_input_datasets/paper_input_samples.csv
+data/processed/paper_features/paper_features_like_paper.csv
+data/processed/paper_features/paper_steady_features_like_paper.csv
+data/processed/paper_classifier_inputs/paper_ann_classifier_inputs.csv
+AB001.mat
+/AB001.mat
